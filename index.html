@@ -1,0 +1,689 @@
+<title>Awaaz Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: voice-studio app. Top bar with three tabs (Text to Speech / Voice Library / History).
+   TTS tab = big editor + player on the left, voice picker and sliders on the right. */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #eaeef2;
+  --ink: #0e1a24;
+  --muted: #5a6a75;
+  --line: #d3dbe1;
+  --accent: #0b6e69;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcf0ee;
+  --man: #3a4bc4;
+  --man-bg: #e4e7fa;
+  --woman: #c23a66;
+  --woman-bg: #f9e3ea;
+  --font-display: "Bricolage Grotesque", "Hind", system-ui, sans-serif;
+  --font-body: "Hind", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1317; --surface: #141e25; --surface-2: #1c2931; --ink: #e6eef2; --muted: #93a5b0;
+    --line: #2a3943; --accent: #3ccbbe; --accent-ink: #06201e; --accent-soft: #12332f;
+    --man: #9faaff; --man-bg: #232a52; --woman: #ff9db9; --woman-bg: #4a2234;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1317; --surface: #141e25; --surface-2: #1c2931; --ink: #e6eef2; --muted: #93a5b0;
+  --line: #2a3943; --accent: #3ccbbe; --accent-ink: #06201e; --accent-soft: #12332f;
+  --man: #9faaff; --man-bg: #232a52; --woman: #ff9db9; --woman-bg: #4a2234;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+button, textarea, input, select { font: inherit; color: inherit; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.shell { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 56px; }
+
+/* top bar */
+.bar { display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; margin-right: auto; }
+.brand svg { width: 28px; height: 28px; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; max-width: 100%; }
+.tabs button { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.tabs button:hover { background: var(--surface-2); }
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* generic */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+.label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+h1, h2 { font-family: var(--font-display); letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.6rem, 4.5vw, 2.2rem); line-height: 1.1; font-weight: 800; }
+h2 { font-size: 1.35rem; font-weight: 800; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; padding: 3px; background: var(--bg); gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 14px; color: var(--muted); }
+.chip:hover { background: var(--surface-2); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 9px 16px; cursor: pointer; font-weight: 600; }
+.btn:hover { background: var(--surface-2); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 5px 12px; font-size: 14px; font-weight: 500; }
+
+.avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+.avatar.m { background: var(--man-bg); color: var(--man); }
+.avatar.f { background: var(--woman-bg); color: var(--woman); }
+.tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.tag.m { color: var(--man); } .tag.f { color: var(--woman); }
+.pill { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--muted); white-space: nowrap; }
+
+/* TTS tab */
+.tts { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .tts { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+.editor { display: flex; flex-direction: column; gap: 14px; }
+textarea#text { width: 100%; min-height: 240px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; line-height: 1.7; font-size: 17px; }
+.player { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.wave { display: flex; align-items: center; gap: 3px; height: 48px; }
+.wave i { flex: 1; min-width: 2px; height: 100%; border-radius: 2px; background: var(--accent); transform: scaleY(0.1); transition: transform 0.12s linear; opacity: 0.9; }
+.meter { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.meter b { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s linear; }
+.transport { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.transport .primary { flex: 1 1 160px; padding-block: 11px; }
+.time { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.msg { font-size: 14px; color: var(--woman); margin: 0; }
+.tip { font-size: 13px; color: var(--muted); margin: 0; }
+
+.side { display: flex; flex-direction: column; gap: 16px; }
+.pick { display: flex; gap: 8px; }
+select { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; }
+.now { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.now strong { font-family: var(--font-display); font-size: 17px; display: block; line-height: 1.2; }
+.now small { font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: block; overflow-wrap: anywhere; }
+.slider { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.slider .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.slider output { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slider small { color: var(--muted); font-size: 12px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+input[type="search"] { background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; min-width: 0; flex: 1 1 200px; }
+
+/* library */
+.lib-head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.lib-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.vcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.vcard[data-selected="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.vcard .top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vcard .top .t { min-width: 0; flex: 1; }
+.vcard h3 { margin: 0; font-family: var(--font-display); font-size: 17px; line-height: 1.15; }
+.vcard p { margin: 0; font-size: 14px; color: var(--muted); }
+.vcard .pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.vcard .acts { display: flex; gap: 6px; margin-top: auto; }
+.vcard .acts .btn { flex: 1; }
+.vcard[data-playing="true"] .acts [data-act="preview"] { border-color: var(--accent); color: var(--accent); }
+.star { border: 0; background: transparent; cursor: pointer; padding: 4px; border-radius: 6px; color: var(--muted); line-height: 0; }
+.star svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.star[aria-pressed="true"] { color: var(--accent); }
+.star[aria-pressed="true"] svg { fill: currentColor; }
+.empty { border: 1px dashed var(--line); border-radius: 12px; padding: 28px 18px; text-align: center; color: var(--muted); }
+
+/* history */
+.hist { display: flex; flex-direction: column; gap: 10px; }
+.hitem { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+.hitem .body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.hitem .txt { margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.hitem .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hitem .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) { .wave i, .meter b { transition: none; } }
+</style>
+
+<div class="shell">
+  <div class="bar">
+    <div class="brand">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="10" width="3.5" height="8" rx="1.75" fill="var(--accent)"/><rect x="8" y="5" width="3.5" height="18" rx="1.75" fill="var(--accent)"/><rect x="14" y="8" width="3.5" height="12" rx="1.75" fill="var(--accent)"/><rect x="20" y="3" width="3.5" height="22" rx="1.75" fill="var(--accent)"/></svg>
+      Awaaz Studio
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" id="tabbtn-tts" data-tab="tts" aria-selected="true">Text to Speech</button>
+      <button type="button" role="tab" id="tabbtn-voices" data-tab="voices" aria-selected="false">Voice Library</button>
+      <button type="button" role="tab" id="tabbtn-history" data-tab="history" aria-selected="false">History <span class="pill" id="histCount">0</span></button>
+    </nav>
+  </div>
+
+  <!-- TEXT TO SPEECH -->
+  <section id="tab-tts" role="tabpanel" aria-labelledby="tabbtn-tts">
+    <div class="tts">
+      <div class="card editor">
+        <div class="row">
+          <h1>Likho. Chuno. Sunao.</h1>
+        </div>
+        <div class="row">
+          <span class="label">Quick start</span>
+          <div class="chips" id="tpl">
+            <button type="button" class="chip" data-tpl="intro">YouTube intro</button>
+            <button type="button" class="chip" data-tpl="news">News</button>
+            <button type="button" class="chip" data-tpl="story">Kahaani</button>
+            <button type="button" class="chip" data-tpl="ad">English ad</button>
+          </div>
+        </div>
+        <textarea id="text" maxlength="5000" spellcheck="false" placeholder="Yahan apna text likho ya paste karo…"></textarea>
+        <div class="row">
+          <span class="mono" id="count">0 / 5000</span>
+          <div class="seg" id="langSeg" role="group" aria-label="Bhasha">
+            <button type="button" data-lang="auto" aria-pressed="true">Auto</button>
+            <button type="button" data-lang="hi" aria-pressed="false">हिन्दी</button>
+            <button type="button" data-lang="en" aria-pressed="false">English</button>
+          </div>
+        </div>
+
+        <div class="player">
+          <div class="wave" id="wave" aria-hidden="true"></div>
+          <div class="meter" aria-hidden="true"><b id="meterBar"></b></div>
+          <div class="row">
+            <span class="time" id="time">0:00</span>
+            <span class="time" id="progress" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="transport">
+          <button type="button" class="btn primary" id="play">Sunao</button>
+          <button type="button" class="btn" id="pause" disabled>Pause</button>
+          <button type="button" class="btn" id="stop" disabled>Band karo</button>
+        </div>
+        <p class="msg" id="msg" role="status"></p>
+        <p class="tip">Tip: Ctrl+Enter (ya Cmd+Enter) dabane se bhi sunna shuru ho jaata hai. Hindi awaaz se Roman Hindi (Hinglish) padhwaoge to ho sakta hai English ki tarah padhe. Behtar ke liye Devanagari mein likho.</p>
+      </div>
+
+      <aside class="side">
+        <div class="card" style="display:flex;flex-direction:column;gap:12px;">
+          <span class="label">Awaaz</span>
+          <div class="now">
+            <div class="avatar m" id="nowAvatar">A</div>
+            <div style="min-width:0">
+              <strong id="nowName">Aarav</strong>
+              <small id="nowEngine">—</small>
+            </div>
+          </div>
+          <div class="pick">
+            <select id="voiceSel" aria-label="Awaaz chuno"></select>
+            <button type="button" class="btn small" id="prevSel">Sample</button>
+          </div>
+          <button type="button" class="btn small" id="openLib">Voice Library kholo</button>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="row"><span class="label">Settings</span><button type="button" class="btn small" id="reset">Reset</button></div>
+          <div class="slider">
+            <div class="top"><label for="rate">Speed</label><output id="rateOut"></output></div>
+            <input type="range" id="rate" min="0.5" max="1.5" step="0.05" value="1">
+          </div>
+          <div class="slider">
+            <div class="top"><label for="pitch">Awaaz ki unchai (pitch)</label><output id="pitchOut"></output></div>
+            <input type="range" id="pitch" min="0.6" max="1.4" step="0.05" value="1">
+          </div>
+          <div class="slider">
+            <div class="top"><label for="stab">Stability</label><output id="stabOut"></output></div>
+            <input type="range" id="stab" min="0" max="100" step="5" value="60">
+            <small>Kam rakhoge to har vaakya mein halka badlaav aayega.</small>
+          </div>
+          <div class="slider">
+            <div class="top"><label for="expr">Expressiveness</label><output id="exprOut"></output></div>
+            <input type="range" id="expr" min="0" max="100" step="5" value="40">
+            <small>Sawaal (?) aur josh (!) wale vaakyon mein zyada utaar-chadhaav.</small>
+          </div>
+        </div>
+        <p class="mono" id="stat" style="margin:0;padding-inline:4px;">Voices check ho rahi hain…</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- VOICE LIBRARY -->
+  <section id="tab-voices" role="tabpanel" aria-labelledby="tabbtn-voices" hidden>
+    <div class="lib-head">
+      <div>
+        <h2>Voice Library</h2>
+        <p class="muted" style="margin:4px 0 0;">20 awaazein: 10 aadmi, 10 aurat. Sunao dabakar sample suno, phir Use karo.</p>
+      </div>
+      <div class="lib-tools">
+        <input type="search" id="voiceQ" placeholder="Naam ya andaaz dhundho…" aria-label="Awaaz dhundho">
+        <div class="seg" id="genderSeg" role="group" aria-label="Aadmi ya aurat">
+          <button type="button" data-g="all" aria-pressed="true">Sab</button>
+          <button type="button" data-g="m" aria-pressed="false">Aadmi</button>
+          <button type="button" data-g="f" aria-pressed="false">Aurat</button>
+        </div>
+        <button type="button" class="chip" id="favOnly" aria-pressed="false">Pasandida</button>
+      </div>
+      <div class="chips" id="useChips" role="group" aria-label="Kis kaam ke liye"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="libEmpty" hidden>Is filter mein koi awaaz nahi mili. Filter badal ke dekho.</div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="tab-history" role="tabpanel" aria-labelledby="tabbtn-history" hidden>
+    <div class="row" style="margin-bottom:16px;">
+      <div>
+        <h2>History</h2>
+        <p class="muted" style="margin:4px 0 0;">Jo text aapne sunaya, wo yahan is browser mein jama rehta hai. Audio file save nahi hoti, sirf text aur awaaz.</p>
+      </div>
+      <button type="button" class="btn small" id="clearHist">Sab hatao</button>
+    </div>
+    <div class="hist" id="hist"></div>
+    <div class="empty" id="histEmpty">Abhi kuch nahi hai. Text to Speech mein kuch sunao, wo yahan dikhega.</div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const PERSONAS = [
+    { id: 'aarav',  name: 'Aarav',  g: 'm', age: 'm', pitch: 0.90, rate: 1.00, use: ['chat', 'assistant', 'narration'], desc: 'Saaf aur seedhi, rozmarra ke kaam ke liye.' },
+    { id: 'vikram', name: 'Vikram', g: 'm', age: 'a', pitch: 0.65, rate: 0.92, use: ['ads', 'narration'], desc: 'Gehri, bhaari awaaz, trailer jaisi.' },
+    { id: 'rohan',  name: 'Rohan',  g: 'm', age: 'y', pitch: 1.00, rate: 1.08, use: ['ads', 'chat'], desc: 'Jawan aur tez, vlog ke liye.' },
+    { id: 'arjun',  name: 'Arjun',  g: 'm', age: 'm', pitch: 0.80, rate: 0.95, use: ['news', 'narration'], desc: 'Newsreader andaaz, thehri hui.' },
+    { id: 'kabir',  name: 'Kabir',  g: 'm', age: 'a', pitch: 0.72, rate: 0.85, use: ['story', 'calm'], desc: 'Dheema, kahaani sunane wala.' },
+    { id: 'dev',    name: 'Dev',    g: 'm', age: 'y', pitch: 0.95, rate: 1.00, use: ['chat', 'assistant'], desc: 'Dosti wala, halka aur apnapan.' },
+    { id: 'karan',  name: 'Karan',  g: 'm', age: 'y', pitch: 0.85, rate: 1.15, use: ['ads', 'news'], desc: 'Josh se bhari, ad aur reel ke liye.' },
+    { id: 'ishaan', name: 'Ishaan', g: 'm', age: 'y', pitch: 1.10, rate: 1.00, use: ['kids', 'chat'], desc: 'Halki, yuva awaaz.' },
+    { id: 'rahul',  name: 'Rahul',  g: 'm', age: 'm', pitch: 0.78, rate: 1.02, use: ['assistant', 'narration'], desc: 'Bharosemand, samjhane wali.' },
+    { id: 'veer',   name: 'Veer',   g: 'm', age: 'a', pitch: 0.60, rate: 0.88, use: ['ads', 'story'], desc: 'Sabse gehri, dabdabe wali.' },
+    { id: 'ananya', name: 'Ananya', g: 'f', age: 'm', pitch: 1.10, rate: 1.00, use: ['narration', 'assistant'], desc: 'Saaf aur meethi, har kaam ke liye.' },
+    { id: 'priya',  name: 'Priya',  g: 'f', age: 'y', pitch: 1.25, rate: 1.05, use: ['ads', 'chat'], desc: 'Khushmizaaj, announcement jaisi.' },
+    { id: 'kavya',  name: 'Kavya',  g: 'f', age: 'm', pitch: 1.00, rate: 0.90, use: ['narration', 'calm'], desc: 'Sukoon wali, padhai ke liye.' },
+    { id: 'meera',  name: 'Meera',  g: 'f', age: 'a', pitch: 1.15, rate: 0.85, use: ['calm', 'story'], desc: 'Shaant, dhyan aur kavita wali.' },
+    { id: 'sana',   name: 'Sana',   g: 'f', age: 'y', pitch: 1.30, rate: 1.12, use: ['ads', 'chat'], desc: 'Tez aur chamakdaar, reels ke liye.' },
+    { id: 'diya',   name: 'Diya',   g: 'f', age: 'y', pitch: 1.40, rate: 1.10, use: ['kids', 'story'], desc: 'Chulbuli, bachchon ki kahaani jaisi.' },
+    { id: 'nisha',  name: 'Nisha',  g: 'f', age: 'a', pitch: 0.95, rate: 0.95, use: ['news', 'narration'], desc: 'Gehri mahila awaaz, bharosa dene wali.' },
+    { id: 'riya',   name: 'Riya',   g: 'f', age: 'y', pitch: 1.20, rate: 1.18, use: ['ads', 'chat'], desc: 'Fast aur energetic.' },
+    { id: 'tara',   name: 'Tara',   g: 'f', age: 'm', pitch: 1.05, rate: 0.88, use: ['story', 'calm'], desc: 'Kahaani sunane wali, narm.' },
+    { id: 'isha',   name: 'Isha',   g: 'f', age: 'y', pitch: 1.35, rate: 1.00, use: ['assistant', 'kids'], desc: 'Patli, saaf, assistant jaisi.' }
+  ];
+  const USES = { narration: 'Narration', news: 'News', story: 'Kahaani', ads: 'Ads & Reels', kids: 'Bachche', calm: 'Shaant', chat: 'Baatcheet', assistant: 'Assistant' };
+  const AGES = { y: 'Yuva', m: 'Madhyam', a: 'Anubhavi' };
+  const DEV = { Aarav: 'आरव', Vikram: 'विक्रम', Rohan: 'रोहन', Arjun: 'अर्जुन', Kabir: 'कबीर', Dev: 'देव', Karan: 'करण', Ishaan: 'ईशान', Rahul: 'राहुल', Veer: 'वीर', Ananya: 'अनन्या', Priya: 'प्रिया', Kavya: 'काव्या', Meera: 'मीरा', Sana: 'सना', Diya: 'दिया', Nisha: 'निशा', Riya: 'रिया', Tara: 'तारा', Isha: 'ईशा' };
+  const TEMPLATES = {
+    intro: 'नमस्ते दोस्तों, स्वागत है आपका मेरे चैनल पर! आज के वीडियो में हम एक बहुत ही मज़ेदार चीज़ देखने वाले हैं। तो वीडियो को आख़िर तक ज़रूर देखिएगा, और चैनल को सब्सक्राइब करना मत भूलिए!',
+    news: 'आज की मुख्य ख़बरों में: राजधानी में तेज़ बारिश से जनजीवन प्रभावित हुआ है। मौसम विभाग ने अगले दो दिनों के लिए अलर्ट जारी किया है। प्रशासन ने लोगों से सतर्क रहने की अपील की है।',
+    story: 'बहुत समय पहले की बात है, एक छोटे से गाँव में एक बूढ़ा किसान रहता था। हर सुबह वह अपने खेतों की ओर निकल पड़ता, और हर शाम एक नई कहानी लेकर लौटता।',
+    ad: "Meet the all-new Pulse. Thirty hours of battery. Studio-grade sound. And it fits right in your pocket. Available now. Don't just listen. Feel it!"
+  };
+
+  const synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const f2 = (x) => x.toFixed(2);
+  const persona = (id) => PERSONAS.find((p) => p.id === id) || PERSONAS[0];
+  const textEl = $('text');
+
+  let voices = [], lang = 'auto', selectedId = 'aarav', favs = [], hist = [];
+  let run = 0, state = 'idle', playingId = null, paused = false, startedAt = 0, timer = null;
+  let libG = 'all', libUse = 'all', libFav = false, libQ = '';
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- per-viewer convenience storage ---------- */
+  const SLIDERS = { rate: 1, pitch: 1, stab: 60, expr: 40 };
+  try {
+    const s = JSON.parse(localStorage.getItem('awaaz-studio-2') || 'null');
+    if (s) {
+      if (typeof s.t === 'string') textEl.value = s.t;
+      if (s.sel) selectedId = s.sel;
+      if (s.lang) lang = s.lang;
+      if (Array.isArray(s.favs)) favs = s.favs;
+      if (Array.isArray(s.hist)) hist = s.hist;
+      if (s.sl) Object.keys(SLIDERS).forEach((k) => { if (typeof s.sl[k] === 'number') SLIDERS[k] = s.sl[k]; });
+    }
+  } catch (e) { /* storage unavailable */ }
+  if (!textEl.value) textEl.value = TEMPLATES.intro;
+  if (!PERSONAS.some((p) => p.id === selectedId)) selectedId = 'aarav';
+  const save = () => {
+    try {
+      const sl = {}; Object.keys(SLIDERS).forEach((k) => { sl[k] = parseFloat($(k).value); });
+      localStorage.setItem('awaaz-studio-2', JSON.stringify({ t: textEl.value, sel: selectedId, lang, favs, hist: hist.slice(0, 30), sl }));
+    } catch (e) { /* ignore */ }
+  };
+
+  /* ---------- voice helpers ---------- */
+  const FEM = /(हिन्दी|samantha|zira|susan|hazel|karen|moira|tessa|veena|kalpana|heera|swara|neerja|aria|jenny|michelle|sara|kate|serena|fiona|allison|ava|victoria|joanna|salli|kendra|kimberly|ivy|amy|emma|lekha|shelley|flo|ellen|nicky|libby|sonia|natasha|clara)/i;
+  const MAL = /(david|daniel|mark|james|george|alex|fred|tom|hemant|ravi|rishi|prabhat|aaron|arthur|guy|ryan|brian|eric|christopher|roger|thomas|oliver|gordon|rocko|reed|eddy|mohan)/i;
+  const normLang = (v) => (v.lang || '').replace('_', '-').toLowerCase();
+  const genderOf = (v) => {
+    const n = v.name || '';
+    if (/\bfemale\b/i.test(n)) return 'f';
+    if (/\bmale\b/i.test(n)) return 'm';
+    if (FEM.test(n)) return 'f';
+    if (MAL.test(n)) return 'm';
+    return 'u';
+  };
+  const langOf = (text) => (lang !== 'auto' ? lang : (/[ऀ-ॿ]/.test(text) ? 'hi' : 'en'));
+  const resolve = (p, text) => {
+    const code = langOf(text);
+    let list = voices.filter((v) => normLang(v).indexOf(code) === 0);
+    if (!list.length) list = voices.slice();
+    let shift = 1;
+    let c = list.filter((v) => genderOf(v) === p.g);
+    if (!c.length) c = list.filter((v) => genderOf(v) === 'u');
+    if (!c.length) { c = list; if (list.length) shift = p.g === 'm' ? 0.75 : 1.25; }
+    const idx = PERSONAS.filter((x) => x.g === p.g).indexOf(p);
+    return { voice: c.length ? c[idx % c.length] : null, shift, code };
+  };
+
+  /* ---------- text splitting ---------- */
+  const chunk = (text) => {
+    const HARD = 180, MERGE = 110;
+    const parts = text.replace(/[ \t]+/g, ' ').match(/[^.!?।\n]+[.!?।]*/g) || [];
+    const out = []; let cur = '';
+    parts.forEach((raw) => {
+      let s = raw.trim();
+      if (!s) return;
+      while (s.length > HARD) {
+        let cut = s.lastIndexOf(' ', HARD);
+        if (cut < 60) cut = HARD;
+        if (cur) { out.push(cur); cur = ''; }
+        out.push(s.slice(0, cut).trim());
+        s = s.slice(cut).trim();
+      }
+      if (cur && (cur + ' ' + s).length > MERGE) { out.push(cur); cur = s; }
+      else cur = (cur + ' ' + s).trim();
+    });
+    if (cur) out.push(cur);
+    return out;
+  };
+
+  /* ---------- speaking ---------- */
+  const val = (id) => parseFloat($(id).value);
+  const build = (txt, p, fullText) => {
+    const r = resolve(p, fullText);
+    const u = new SpeechSynthesisUtterance(txt);
+    if (r.voice) { u.voice = r.voice; u.lang = r.voice.lang; } else u.lang = r.code === 'hi' ? 'hi-IN' : 'en-US';
+    const stab = val('stab') / 100, expr = val('expr') / 100;
+    const jitter = (1 - stab) * 0.12;
+    let pitch = p.pitch * val('pitch') * r.shift * (1 + (Math.random() - 0.5) * 2 * jitter);
+    let rate = p.rate * val('rate') * (1 + (Math.random() - 0.5) * jitter);
+    const end = txt.trim().slice(-1);
+    if (end === '?') pitch *= 1 + 0.12 * expr;
+    if (end === '!') { pitch *= 1 + 0.09 * expr; rate *= 1 + 0.06 * expr; }
+    u.pitch = clamp(pitch, 0.1, 2);
+    u.rate = clamp(rate, 0.1, 3);
+    return u;
+  };
+  const fmtTime = (ms) => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const say = (m) => { $('msg').textContent = m || ''; };
+
+  const setState = (s, id) => {
+    state = s; playingId = id || null; paused = false;
+    const on = s === 'speaking';
+    $('pause').disabled = !on; $('stop').disabled = !on;
+    $('pause').textContent = 'Pause';
+    $('play').textContent = on ? 'Dobara sunao' : 'Sunao';
+    clearInterval(timer);
+    if (on) {
+      startedAt = Date.now();
+      timer = setInterval(() => { if (!paused) $('time').textContent = fmtTime(Date.now() - startedAt); }, 250);
+    } else {
+      $('progress').textContent = ''; $('meterBar').style.width = '0';
+    }
+    renderPlaying();
+  };
+
+  const speak = (text, p, opts) => {
+    opts = opts || {};
+    say('');
+    if (!synth) { say('Is browser mein bolne ki suvidha nahi hai. Chrome ya Edge mein kholo.'); return; }
+    const chunks = chunk(text);
+    if (!chunks.length) { say('Pehle kuch text likho.'); return; }
+    synth.cancel();
+    const id = ++run;
+    let i = 0;
+    $('time').textContent = '0:00';
+    setState('speaking', opts.sample ? 'sample:' + p.id : 'main');
+    if (!opts.sample && !opts.noHistory) addHistory(text, p);
+    const next = () => {
+      if (id !== run) return;
+      if (i >= chunks.length) { $('meterBar').style.width = '100%'; setState('idle'); return; }
+      const u = build(chunks[i], p, text);
+      u.onend = () => { if (id !== run) return; i++; next(); };
+      u.onerror = (e) => {
+        if (id !== run) return;
+        if (e.error === 'canceled' || e.error === 'interrupted') return;
+        say('Awaaz nahi chal paayi (' + (e.error || 'error') + '). Page par ek baar tap karke dobara try karo.');
+        setState('idle');
+      };
+      $('meterBar').style.width = Math.round((i / chunks.length) * 100) + '%';
+      $('progress').textContent = chunks.length > 1 ? 'Hissa ' + (i + 1) + ' / ' + chunks.length : '';
+      synth.speak(u);
+    };
+    setTimeout(next, 60);
+  };
+  const stopAll = () => { run++; if (synth) synth.cancel(); setState('idle'); };
+
+  const sampleText = (p) => {
+    if (langOf(textEl.value) === 'hi') {
+      return 'नमस्ते, मेरा नाम ' + (DEV[p.name] || p.name) + ' है। आप जो भी लिखेंगे, मैं उसे ' + (p.g === 'm' ? 'पढ़कर सुनाऊँगा' : 'पढ़कर सुनाऊँगी') + '।';
+    }
+    return 'Hello, my name is ' + p.name + '. Type anything and I will read it out loud for you.';
+  };
+
+  /* ---------- history ---------- */
+  const addHistory = (text, p) => {
+    hist.unshift({ id: Date.now(), t: text, v: p.id, ts: Date.now() });
+    hist = hist.slice(0, 30);
+    save(); renderHistory();
+  };
+  const renderHistory = () => {
+    $('histCount').textContent = hist.length;
+    $('histEmpty').hidden = hist.length > 0;
+    $('clearHist').hidden = hist.length === 0;
+    $('hist').innerHTML = hist.map((h) => {
+      const p = persona(h.v);
+      const when = new Date(h.ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      return '<div class="hitem" data-hid="' + h.id + '">' +
+        '<div class="avatar ' + p.g + '">' + esc(p.name.charAt(0)) + '</div>' +
+        '<div class="body"><p class="txt">' + esc(h.t) + '</p>' +
+        '<div class="meta"><span class="tag ' + p.g + '">' + esc(p.name) + '</span><span class="mono">' + esc(when) + ' · ' + h.t.length + ' akshar</span></div>' +
+        '<div class="acts"><button type="button" class="btn small" data-hact="play">Sunao</button>' +
+        '<button type="button" class="btn small" data-hact="reuse">Editor mein kholo</button>' +
+        '<button type="button" class="btn small" data-hact="del">Hatao</button></div></div></div>';
+    }).join('');
+  };
+
+  /* ---------- library ---------- */
+  const starSvg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 16.9 6.7 19.6l1-5.8L3.5 9.7l5.9-.9z" stroke-linejoin="round"/></svg>';
+  const renderChips = () => {
+    const keys = ['all'].concat(Object.keys(USES));
+    $('useChips').innerHTML = keys.map((k) =>
+      '<button type="button" class="chip" data-use="' + k + '" aria-pressed="' + (libUse === k) + '">' + (k === 'all' ? 'Sab kaam' : USES[k]) + '</button>').join('');
+  };
+  const renderLibrary = () => {
+    const q = libQ.trim().toLowerCase();
+    const list = PERSONAS.filter((p) => {
+      if (libG !== 'all' && p.g !== libG) return false;
+      if (libUse !== 'all' && p.use.indexOf(libUse) < 0) return false;
+      if (libFav && favs.indexOf(p.id) < 0) return false;
+      if (q) {
+        const hay = (p.name + ' ' + p.desc + ' ' + p.use.map((u) => USES[u]).join(' ')).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    $('libEmpty').hidden = list.length > 0;
+    $('grid').innerHTML = list.map((p) => {
+      const sel = p.id === selectedId, fav = favs.indexOf(p.id) >= 0;
+      return '<article class="vcard" data-id="' + p.id + '" data-selected="' + sel + '" data-playing="false">' +
+        '<div class="top"><div class="avatar ' + p.g + '">' + esc(p.name.charAt(0)) + '</div>' +
+        '<div class="t"><h3>' + esc(p.name) + '</h3><span class="tag ' + p.g + '">' + (p.g === 'm' ? 'Aadmi' : 'Aurat') + ' · ' + AGES[p.age] + '</span></div>' +
+        '<button type="button" class="star" data-act="fav" aria-pressed="' + fav + '" aria-label="' + esc(p.name) + ' ko pasandida mein jodo">' + starSvg + '</button></div>' +
+        '<p>' + esc(p.desc) + '</p>' +
+        '<div class="pills">' + p.use.map((u) => '<span class="pill">' + USES[u] + '</span>').join('') + '</div>' +
+        '<span class="mono">pitch ' + f2(p.pitch) + '× · speed ' + f2(p.rate) + '×</span>' +
+        '<div class="acts"><button type="button" class="btn small" data-act="preview">Sunao</button>' +
+        '<button type="button" class="btn small ' + (sel ? 'primary' : '') + '" data-act="use">' + (sel ? 'Chuni gayi' : 'Use karo') + '</button></div></article>';
+    }).join('');
+    renderPlaying();
+  };
+  const renderPlaying = () => {
+    document.querySelectorAll('#grid .vcard').forEach((c) => {
+      c.setAttribute('data-playing', playingId === 'sample:' + c.getAttribute('data-id') ? 'true' : 'false');
+    });
+  };
+
+  /* ---------- side panel ---------- */
+  const renderVoiceSel = () => {
+    const opt = (p) => '<option value="' + p.id + '">' + esc(p.name) + ' · ' + esc(p.desc.replace(/\.$/, '')) + '</option>';
+    $('voiceSel').innerHTML = '<optgroup label="Aadmi">' + PERSONAS.filter((p) => p.g === 'm').map(opt).join('') + '</optgroup>' +
+      '<optgroup label="Aurat">' + PERSONAS.filter((p) => p.g === 'f').map(opt).join('') + '</optgroup>';
+    $('voiceSel').value = selectedId;
+  };
+  const renderNow = () => {
+    const p = persona(selectedId), r = resolve(p, textEl.value);
+    $('nowAvatar').className = 'avatar ' + p.g;
+    $('nowAvatar').textContent = p.name.charAt(0);
+    $('nowName').textContent = p.name + ' · ' + (p.g === 'm' ? 'Aadmi' : 'Aurat');
+    $('nowEngine').textContent = r.voice ? 'engine: ' + r.voice.name + ' (' + r.voice.lang + ')' : 'engine: browser ki default awaaz';
+    $('voiceSel').value = selectedId;
+  };
+  const renderStat = () => {
+    if (!synth) { $('stat').textContent = 'Is browser mein text-to-speech nahi hai. Chrome ya Edge mein kholo.'; return; }
+    if (!voices.length) { $('stat').textContent = 'Voices load ho rahi hain…'; return; }
+    const hi = voices.filter((v) => normLang(v).indexOf('hi') === 0).length;
+    const en = voices.filter((v) => normLang(v).indexOf('en') === 0).length;
+    let t = 'Is device par ' + voices.length + ' voices mili (Hindi ' + hi + ', English ' + en + ').';
+    if (langOf(textEl.value) === 'hi' && hi < 4) t += ' Hindi voices kam hain, isliye awaazon ka farq zyada tar pitch aur speed se aata hai.';
+    $('stat').textContent = t;
+  };
+  const renderOutputs = () => {
+    $('rateOut').textContent = f2(val('rate')) + '×';
+    $('pitchOut').textContent = f2(val('pitch')) + '×';
+    $('stabOut').textContent = Math.round(val('stab')) + '%';
+    $('exprOut').textContent = Math.round(val('expr')) + '%';
+  };
+  const updateCount = () => {
+    const n = textEl.value.length;
+    const sec = Math.max(1, Math.round(n / (14 * val('rate'))));
+    $('count').textContent = n + ' / 5000 · lagbhag ' + (sec >= 60 ? Math.floor(sec / 60) + ' min ' + (sec % 60) + ' sec' : sec + ' sec');
+  };
+  const refreshAll = () => { renderStat(); renderNow(); updateCount(); };
+
+  /* ---------- tabs ---------- */
+  const showTab = (name) => {
+    ['tts', 'voices', 'history'].forEach((t) => {
+      $('tab-' + t).hidden = t !== name;
+      $('tabbtn-' + t).setAttribute('aria-selected', t === name ? 'true' : 'false');
+    });
+    if (name === 'voices') renderLibrary();
+  };
+
+  /* ---------- wiring ---------- */
+  document.querySelector('.tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]'); if (b) showTab(b.getAttribute('data-tab'));
+  });
+  $('openLib').addEventListener('click', () => showTab('voices'));
+  textEl.addEventListener('input', () => { save(); refreshAll(); });
+  textEl.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); speak(textEl.value, persona(selectedId)); } });
+  $('tpl').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tpl]'); if (!b) return;
+    textEl.value = TEMPLATES[b.getAttribute('data-tpl')];
+    save(); refreshAll();
+  });
+  $('langSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-lang]'); if (!b) return;
+    lang = b.getAttribute('data-lang');
+    $('langSeg').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    save(); refreshAll();
+  });
+  $('voiceSel').addEventListener('change', () => { selectedId = $('voiceSel').value; save(); renderNow(); });
+  $('prevSel').addEventListener('click', () => { const p = persona(selectedId); speak(sampleText(p), p, { sample: true }); });
+  $('play').addEventListener('click', () => speak(textEl.value, persona(selectedId)));
+  $('pause').addEventListener('click', () => {
+    if (!synth) return;
+    if (paused) { synth.resume(); paused = false; $('pause').textContent = 'Pause'; }
+    else { synth.pause(); paused = true; $('pause').textContent = 'Phir chalao'; }
+  });
+  $('stop').addEventListener('click', stopAll);
+  Object.keys(SLIDERS).forEach((k) => {
+    $(k).value = SLIDERS[k];
+    $(k).addEventListener('input', () => { renderOutputs(); updateCount(); save(); });
+  });
+  $('reset').addEventListener('click', () => {
+    const d = { rate: 1, pitch: 1, stab: 60, expr: 40 };
+    Object.keys(d).forEach((k) => { $(k).value = d[k]; });
+    renderOutputs(); updateCount(); save();
+  });
+
+  $('voiceQ').addEventListener('input', () => { libQ = $('voiceQ').value; renderLibrary(); });
+  $('genderSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-g]'); if (!b) return;
+    libG = b.getAttribute('data-g');
+    $('genderSeg').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    renderLibrary();
+  });
+  $('favOnly').addEventListener('click', () => {
+    libFav = !libFav; $('favOnly').setAttribute('aria-pressed', String(libFav)); renderLibrary();
+  });
+  $('useChips').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-use]'); if (!b) return;
+    libUse = b.getAttribute('data-use'); renderChips(); renderLibrary();
+  });
+  $('grid').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const p = persona(b.closest('.vcard').getAttribute('data-id'));
+    const act = b.getAttribute('data-act');
+    if (act === 'preview') speak(sampleText(p), p, { sample: true });
+    else if (act === 'use') { selectedId = p.id; save(); renderNow(); renderLibrary(); showTab('tts'); }
+    else if (act === 'fav') {
+      const i = favs.indexOf(p.id);
+      if (i >= 0) favs.splice(i, 1); else favs.push(p.id);
+      save(); renderLibrary();
+    }
+  });
+  $('hist').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-hact]'); if (!b) return;
+    const id = Number(b.closest('.hitem').getAttribute('data-hid'));
+    const h = hist.find((x) => x.id === id); if (!h) return;
+    const act = b.getAttribute('data-hact');
+    if (act === 'play') speak(h.t, persona(h.v), { noHistory: true });
+    else if (act === 'reuse') { textEl.value = h.t; selectedId = h.v; save(); refreshAll(); updateCount(); showTab('tts'); }
+    else if (act === 'del') { hist = hist.filter((x) => x.id !== id); save(); renderHistory(); }
+  });
+  let armed = null;
+  $('clearHist').addEventListener('click', () => {
+    if (!armed) {
+      $('clearHist').textContent = 'Pakka? Dobara dabao';
+      armed = setTimeout(() => { armed = null; $('clearHist').textContent = 'Sab hatao'; }, 3000);
+      return;
+    }
+    clearTimeout(armed); armed = null; $('clearHist').textContent = 'Sab hatao';
+    hist = []; save(); renderHistory();
+  });
+  window.addEventListener('pagehide', () => { if (synth) synth.cancel(); });
+
+  /* waveform */
+  const waveEl = $('wave'), bars = [], levels = [];
+  for (let k = 0; k < 48; k++) { const el = document.createElement('i'); waveEl.appendChild(el); bars.push(el); levels.push(0.1); }
+  setInterval(() => {
+    const live = state === 'speaking' && !paused;
+    for (let j = 0; j < bars.length; j++) {
+      const target = !live ? 0.1 : (reduceMotion ? 0.5 : 0.15 + Math.random() * 0.85);
+      levels[j] += (target - levels[j]) * 0.6;
+      bars[j].style.transform = 'scaleY(' + levels[j].toFixed(3) + ')';
+    }
+  }, 100);
+
+  /* init */
+  $('langSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.getAttribute('data-lang') === lang ? 'true' : 'false'));
+  renderVoiceSel(); renderChips(); renderLibrary(); renderHistory(); renderOutputs(); refreshAll();
+  const loadVoices = () => { if (!synth) { refreshAll(); return; } voices = synth.getVoices() || []; refreshAll(); };
+  if (synth) {
+    loadVoices();
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', loadVoices); else synth.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 500);
+  } else refreshAll();
+})();
+</script>
